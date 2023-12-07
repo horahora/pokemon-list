@@ -1,0 +1,37 @@
+.pagination {
+  --border-color: #ced4da;
+  display: flex;
+  flex-direction: row;
+  margin: 10px auto;
+}
+
+.anchor {
+  margin: 0 5px;
+  border: 1px solid;
+  border-color: var(--border-color);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.dots {
+  text-align: center;
+}
+
+.anchor,
+.dots {
+  height: 2rem;
+  min-width: 2rem;
+  line-height: 2rem;
+}
+
+.active {
+  color: white;
+  background-color: #868e96;
+}
+
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

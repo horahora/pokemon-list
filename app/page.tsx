@@ -1,95 +1,107 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import styles from "./page.module.css";
+import Pagination from "@/components/Pagination";
+import Card from "@/components/Card";
+export interface Pokemon {
+  id: number;
+  name: string;
+  sprites: {
+    back_default: string;
+  };
+  types: {
+    type: {
+      name: string;
+    };
+  }[];
+}
+
+const PAGE_LIMIT = 20;
+const API_URL = "https://pokeapi.co/api/v2/pokemon";
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const page = searchParams.get("page");
+  const [pokemonData, setPokemonData] = useState<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: Pokemon[];
+  } | null>(null);
+
+  const [pokemonList, setPokemonList] = useState<(Pokemon | null)[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState({ message: "" });
+  const [offset, setOffset] = useState(
+    page ? (parseInt(page) - 1) * PAGE_LIMIT : 0
+  );
+
+  useEffect(() => {
+    if (page) {
+      setOffset((parseInt(page) - 1) * PAGE_LIMIT);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    setIsFetching(true);
+    fetch(`${API_URL}?limit=${PAGE_LIMIT}&offset=${offset}}`)
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        return Promise.reject(response);
+      })
+      .then((data) => {
+        setPokemonData(data);
+        setIsFetching(false);
+        setPokemonList(Array.from({ length: PAGE_LIMIT }, () => null));
+        data.results.forEach(({ url }: { url: string }, index: number) =>
+          fetch(url)
+            .then((response) => {
+              if (response.ok) {
+                return response.json();
+              }
+              return Promise.reject(response);
+            })
+            .then((pokemon: Pokemon) => {
+              setPokemonList((prev) => {
+                const newList = [...prev];
+                newList[index] = pokemon;
+                return newList;
+              });
+            })
+        );
+      })
+      .catch((response) => {
+        setIsError(true);
+        setError({ message: response.statusText });
+        console.log(response.status, response.statusText);
+      });
+  }, [offset]);
+
   return (
     <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
       <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+        {pokemonData ? (
+          pokemonList.map((pokemon) =>
+            pokemon ? <Card key={pokemon.name} pokemon={pokemon} /> : null
+          )
+        ) : isError ? (
+          <span>Error: {error.message}</span>
+        ) : (
+          <span>Loading...</span>
+        )}
       </div>
+      {pokemonData && (
+        <Pagination
+          totalPage={Math.ceil(pokemonData.count / PAGE_LIMIT)}
+          activePage={Math.ceil((offset + 1) / PAGE_LIMIT)}
+        />
+      )}
     </main>
-  )
+  );
 }
